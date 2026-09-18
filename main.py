@@ -1,6 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator, model_validator
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 class AccountType(str, Enum):
     INDIVIDUAL = "individual"
@@ -62,7 +62,20 @@ users_db: dict[int, User] = {}
 
 app = FastAPI()
 
-@app.post("/users")
+@app.post("/users", response_model=UserPublic, status_code=201)
 def create_user(user: User):
+    if user.id in users_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Un utilisateur avec cet id existe déjà"
+        )
+
+    for existing_user in users_db.values():
+        if existing_user.email == user.email:
+            raise HTTPException(
+                status_code=400,
+                detail="Cet email est déjà utilisé"
+            )
+
     users_db[user.id] = user
     return user
