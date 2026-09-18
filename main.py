@@ -218,3 +218,21 @@ def delete_user(user_id: int):
     del users_db[user_id]
 
     return {"message": "Utilisateur supprimé"}
+
+
+@app.post("/reviews", response_model=Review, status_code=201)
+def create_review(review: Review):
+    if review.id in reviews_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Un avis avec cet id existe déjà"
+        )
+
+    if review.user_id not in users_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Utilisateur associé introuvable"
+        )
+
+    reviews_db[review.id] = review
+    return review
