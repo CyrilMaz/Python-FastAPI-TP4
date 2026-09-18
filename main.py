@@ -136,6 +136,8 @@ class ReviewUpdate(BaseModel):
 
         return value
 
+reviews_db: dict[int, Review] = {}
+
 ###############################
 #          Routes API         #
 ###############################
