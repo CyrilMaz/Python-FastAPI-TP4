@@ -64,6 +64,12 @@ class ReservationUpdate(BaseModel):
     status: Optional[ReservationStatus] = None
     notes: Optional[str] = Field(default=None, max_length=280)
 
+    @model_validator(mode="after")
+    def check_dates_coherentes(self) -> "ReservationUpdate":
+        if self.start_date and self.end_date and self.end_date <= self.start_date:
+            raise ValueError("end_date doit être strictement postérieure à start_date")
+        return self
+
 
 class Reservation(ReservationBase):
     id: int
@@ -83,6 +89,37 @@ def _generate_id() -> int:
     return new_id
 
 
+def _overlaps(
+    a_start: date,
+    a_end: date,
+    b_start: date,
+    b_end: date
+) -> bool:
+    return a_start < b_end and b_start < a_end
+
+
+def _find_conflicting_reservation(
+    item_id: int,
+    start_date: date,
+    end_date: date,
+    exclude_id: Optional[int] = None
+) -> Optional[Reservation]:
+    for r in reservations_db.values():
+        if r.id == exclude_id:
+            continue
+
+        if r.item_id != item_id:
+            continue
+
+        if r.status == ReservationStatus.CANCELLED:
+            continue
+
+        if _overlaps(start_date, end_date, r.start_date, r.end_date):
+            return r
+
+    return None
+
+
 @router.post("", response_model=Reservation, status_code=status.HTTP_201_CREATED)
 def create_reservation(payload: ReservationCreate) -> Reservation:
     if not user_exists(payload.user_id):
@@ -95,6 +132,22 @@ def create_reservation(payload: ReservationCreate) -> Reservation:
         raise HTTPException(
             status_code=404,
             detail=f"Objet {payload.item_id} introuvable"
+        )
+
+    conflict = _find_conflicting_reservation(
+        payload.item_id,
+        payload.start_date,
+        payload.end_date
+    )
+
+    if conflict is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"L'objet {payload.item_id} est déjà réservé du "
+                f"{conflict.start_date} au {conflict.end_date} "
+                f"(réservation {conflict.id})"
+            ),
         )
 
     nb_days = (payload.end_date - payload.start_date).days
@@ -141,3 +194,76 @@ def get_reservation(reservation_id: int) -> Reservation:
         )
 
     return reservation
+
+
+@router.patch("/{reservation_id}", response_model=Reservation)
+def update_reservation(
+    reservation_id: int,
+    payload: ReservationUpdate
+) -> Reservation:
+    reservation = reservations_db.get(reservation_id)
+
+    if reservation is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Réservation {reservation_id} introuvable"
+        )
+
+    if reservation.status == ReservationStatus.CANCELLED:
+        raise HTTPException(
+            status_code=403,
+            detail="Une réservation annulée ne peut plus être modifiée"
+        )
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    new_start = updates.get("start_date", reservation.start_date)
+    new_end = updates.get("end_date", reservation.end_date)
+
+    if new_end <= new_start:
+        raise HTTPException(
+            status_code=400,
+            detail="end_date doit être postérieure à start_date"
+        )
+
+    if "start_date" in updates or "end_date" in updates:
+        conflict = _find_conflicting_reservation(
+            reservation.item_id,
+            new_start,
+            new_end,
+            exclude_id=reservation.id
+        )
+
+        if conflict is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Conflit avec la réservation {conflict.id} sur ces dates"
+            )
+
+    updated = reservation.model_copy(update=updates)
+    reservations_db[reservation_id] = updated
+
+    return updated
+
+
+@router.delete("/{reservation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_reservation(reservation_id: int) -> None:
+    reservation = reservations_db.get(reservation_id)
+
+    if reservation is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Réservation {reservation_id} introuvable"
+        )
+
+    if (
+        reservation.status == ReservationStatus.CONFIRMED
+        and reservation.start_date <= date.today()
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Impossible de supprimer une réservation confirmée déjà commencée"
+        )
+
+    del reservations_db[reservation_id]
+    return None
