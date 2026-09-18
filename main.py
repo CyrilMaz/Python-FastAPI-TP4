@@ -78,6 +78,64 @@ class ReviewPhoto(BaseModel):
     url: str = Field(min_length=5, max_length=500)
     caption: str | None = Field(default=None, max_length=120)
 
+class Review(BaseModel):
+    id: int = Field(gt=0)
+    user_id: int = Field(gt=0)
+    material_id: int = Field(gt=0)
+
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(min_length=3, max_length=500)
+
+    status: ReviewStatus = ReviewStatus.PUBLISHED
+
+    photos: list[ReviewPhoto] = Field(default_factory=list)
+
+    @field_validator("comment")
+    @classmethod
+    def check_comment(cls, value):
+        if not value.strip():
+            raise ValueError(
+                "Le commentaire ne peut pas contenir uniquement des espaces"
+            )
+
+        return value
+
+    @model_validator(mode="after")
+    def check_low_rating_comment(self):
+        if self.rating <= 2 and len(self.comment.strip()) < 10:
+            raise ValueError(
+                "Une note de 1 ou 2 doit être accompagnée "
+                "d'un commentaire d'au moins 10 caractères"
+            )
+
+        return self
+
+class ReviewUpdate(BaseModel):
+    user_id: int | None = Field(default=None, gt=0)
+    material_id: int | None = Field(default=None, gt=0)
+
+    rating: int | None = Field(default=None, ge=1, le=5)
+
+    comment: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=500
+    )
+
+    status: ReviewStatus | None = None
+
+    photos: list[ReviewPhoto] | None = None
+
+    @field_validator("comment")
+    @classmethod
+    def check_comment(cls, value):
+        if value is not None and not value.strip():
+            raise ValueError(
+                "Le commentaire ne peut pas contenir uniquement des espaces"
+            )
+
+        return value
+
 ###############################
 #          Routes API         #
 ###############################
