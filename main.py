@@ -34,6 +34,12 @@ class User(BaseModel):
 
         return self
 
+class UserPublic(BaseModel):
+    id: int
+    username: str
+    account_type: AccountType
+    is_active: bool
+
 users_db: dict[int, User] = {}
 
 app = FastAPI()
