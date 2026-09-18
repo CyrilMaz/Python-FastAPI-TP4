@@ -83,3 +83,13 @@ def create_user(user: User):
 @app.get("/users", response_model=list[UserPublic])
 def get_users():
     return list(users_db.values())
+
+@app.get("/users/{user_id}", response_model=UserPublic)
+def get_user(user_id: int):
+    if user_id not in users_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Utilisateur introuvable"
+        )
+
+    return users_db[user_id]
