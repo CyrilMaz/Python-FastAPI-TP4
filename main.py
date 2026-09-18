@@ -70,7 +70,9 @@ users_db: dict[int, User] = {}
 #          Classes Review         #
 ###################################
 
-
+class ReviewStatus(str, Enum):
+    PUBLISHED = "published"
+    HIDDEN = "hidden"
 
 ###############################
 #          Routes API         #
