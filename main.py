@@ -93,3 +93,34 @@ def get_user(user_id: int):
         )
 
     return users_db[user_id]
+
+@app.patch("/users/{user_id}", response_model=UserPublic)
+def update_user(user_id: int, update: UserUpdate):
+    if user_id not in users_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Utilisateur introuvable"
+        )
+
+    changes = update.model_dump(exclude_unset=True)
+
+    if "email" in changes:
+        for existing_user in users_db.values():
+            if (
+                existing_user.id != user_id
+                and existing_user.email == changes["email"]
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cet email est déjà utilisé"
+                )
+
+    old_user = users_db[user_id]
+
+    new_data = old_user.model_dump()
+    new_data.update(changes)
+
+    updated_user = User.model_validate(new_data)
+
+    users_db[user_id] = updated_user
+    return updated_user
