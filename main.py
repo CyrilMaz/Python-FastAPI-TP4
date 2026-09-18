@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from fastapi import FastAPI
 
 class AccountType(str, Enum):
@@ -21,6 +21,18 @@ class User(BaseModel):
     phone: str | None = None
     account_type: AccountType
     is_active: bool = True
+
+    @model_validator(mode="after")
+    def check_professional_phone(self):
+        if (
+            self.account_type == AccountType.PROFESSIONAL
+            and self.phone is None
+        ):
+            raise ValueError(
+                "Un compte professionnel doit avoir un numéro de téléphone"
+            )
+
+        return self
 
 users_db: dict[int, User] = {}
 
