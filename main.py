@@ -250,3 +250,42 @@ def get_review(review_id: int):
         )
 
     return reviews_db[review_id]
+
+@app.patch("/reviews/{review_id}", response_model=Review)
+def update_review(review_id: int, update: ReviewUpdate):
+    if review_id not in reviews_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Avis introuvable"
+        )
+
+    changes = update.model_dump(exclude_unset=True)
+
+    if "user_id" in changes:
+        if changes["user_id"] not in users_db:
+            raise HTTPException(
+                status_code=404,
+                detail="Utilisateur associé introuvable"
+            )
+
+    old_review = reviews_db[review_id]
+
+    new_data = old_review.model_dump()
+    new_data.update(changes)
+
+    updated_review = Review.model_validate(new_data)
+
+    reviews_db[review_id] = updated_review
+    return updated_review
+
+@app.delete("/reviews/{review_id}")
+def delete_review(review_id: int):
+    if review_id not in reviews_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Avis introuvable"
+        )
+
+    del reviews_db[review_id]
+
+    return {"message": "Avis supprimé"}
