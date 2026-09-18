@@ -236,3 +236,7 @@ def create_review(review: Review):
 
     reviews_db[review.id] = review
     return review
+
+@app.get("/reviews", response_model=list[Review])
+def get_reviews():
+    return list(reviews_db.values())
