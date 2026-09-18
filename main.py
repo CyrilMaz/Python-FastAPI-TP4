@@ -240,3 +240,13 @@ def create_review(review: Review):
 @app.get("/reviews", response_model=list[Review])
 def get_reviews():
     return list(reviews_db.values())
+
+@app.get("/reviews/{review_id}", response_model=Review)
+def get_review(review_id: int):
+    if review_id not in reviews_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Avis introuvable"
+        )
+
+    return reviews_db[review_id]
