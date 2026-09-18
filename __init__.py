@@ -1,0 +1,1 @@
+"""Application FastAPI — partie catalogue."""
