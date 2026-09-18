@@ -40,6 +40,24 @@ class UserPublic(BaseModel):
     account_type: AccountType
     is_active: bool
 
+class UserUpdate(BaseModel):
+    username: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=30
+    )
+    email: str | None = None
+    phone: str | None = None
+    account_type: AccountType | None = None
+    is_active: bool | None = None
+
+    @field_validator("email")
+    @classmethod
+    def check_email(cls, value):
+        if value is not None and " " in value:
+            raise ValueError("L'email ne doit pas contenir d'espace")
+        return value
+
 users_db: dict[int, User] = {}
 
 app = FastAPI()
