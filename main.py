@@ -124,3 +124,15 @@ def update_user(user_id: int, update: UserUpdate):
 
     users_db[user_id] = updated_user
     return updated_user
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int):
+    if user_id not in users_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Utilisateur introuvable"
+        )
+
+    del users_db[user_id]
+
+    return {"message": "Utilisateur supprimé"}
