@@ -2,6 +2,12 @@ from enum import Enum
 from pydantic import BaseModel, Field, field_validator, model_validator
 from fastapi import FastAPI, HTTPException
 
+
+#################################
+#          Classes USER         #
+#################################
+
+
 class AccountType(str, Enum):
     INDIVIDUAL = "individual"
     PROFESSIONAL = "professional"
@@ -59,6 +65,16 @@ class UserUpdate(BaseModel):
         return value
 
 users_db: dict[int, User] = {}
+
+###################################
+#          Classes Review         #
+###################################
+
+
+
+###############################
+#          Routes API         #
+###############################
 
 app = FastAPI()
 
