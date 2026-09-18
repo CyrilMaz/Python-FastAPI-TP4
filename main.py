@@ -2,6 +2,9 @@ from enum import Enum
 from pydantic import BaseModel, Field, field_validator, model_validator
 from fastapi import FastAPI, HTTPException
 
+from routers.categories import router as categories_router
+from routers.materials import router as materials_router
+
 
 #################################
 #          Classes USER         #
@@ -142,7 +145,14 @@ reviews_db: dict[int, Review] = {}
 #          Routes API         #
 ###############################
 
-app = FastAPI()
+app = FastAPI(
+    title="Catalogue de matériel",
+    version="1.0.0",
+    description="Partie catalogue : ressources Category et Material.",
+)
+
+app.include_router(categories_router)
+app.include_router(materials_router)
 
 ######################################
 #          Routes API - USER         #
@@ -297,3 +307,8 @@ def delete_review(review_id: int):
     del reviews_db[review_id]
 
     return {"message": "Avis supprimé"}
+
+
+@app.get("/health", tags=["system"])
+def health() -> dict[str, str]:
+    return {"status": "ok"}
