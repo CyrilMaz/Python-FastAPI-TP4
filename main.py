@@ -144,6 +144,10 @@ reviews_db: dict[int, Review] = {}
 
 app = FastAPI()
 
+######################################
+#          Routes API - USER         #
+######################################
+
 @app.post("/users", response_model=UserPublic, status_code=201)
 def create_user(user: User):
     if user.id in users_db:
@@ -218,6 +222,10 @@ def delete_user(user_id: int):
     del users_db[user_id]
 
     return {"message": "Utilisateur supprimé"}
+
+########################################
+#          Routes API - REVIEW         #
+########################################
 
 
 @app.post("/reviews", response_model=Review, status_code=201)
