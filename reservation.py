@@ -32,6 +32,24 @@ def get_item_price(item_id: int) -> float:
     return FAKE_ITEMS_DB[item_id]["price_per_day"]
 
 
+def wire_dependencies(
+    *,
+    user_exists_fn=None,
+    item_exists_fn=None,
+    item_price_fn=None
+) -> None:
+    global user_exists, item_exists, get_item_price
+
+    if user_exists_fn is not None:
+        user_exists = user_exists_fn
+
+    if item_exists_fn is not None:
+        item_exists = item_exists_fn
+
+    if item_price_fn is not None:
+        get_item_price = item_price_fn
+
+
 class ReservationStatus(str, Enum):
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
@@ -49,8 +67,10 @@ class ReservationBase(BaseModel):
     def check_dates_coherentes(self) -> "ReservationBase":
         if self.end_date <= self.start_date:
             raise ValueError("end_date doit être strictement postérieure à start_date")
+
         if self.start_date < date.today():
             raise ValueError("start_date ne peut pas être dans le passé")
+
         return self
 
 
@@ -68,6 +88,7 @@ class ReservationUpdate(BaseModel):
     def check_dates_coherentes(self) -> "ReservationUpdate":
         if self.start_date and self.end_date and self.end_date <= self.start_date:
             raise ValueError("end_date doit être strictement postérieure à start_date")
+
         return self
 
 
@@ -181,6 +202,55 @@ def list_reservations(
         results = [r for r in results if r.status == status_filter]
 
     return results
+
+
+@router.get("/stats")
+def reservation_stats() -> dict:
+    all_reservations = list(reservations_db.values())
+    total = len(all_reservations)
+
+    by_status = {
+        s.value: 0
+        for s in ReservationStatus
+    }
+
+    for r in all_reservations:
+        by_status[r.status.value] += 1
+
+    if total > 0:
+        avg_duration = sum(
+            (r.end_date - r.start_date).days
+            for r in all_reservations
+        ) / total
+
+        revenue_confirmed = sum(
+            r.total_price
+            for r in all_reservations
+            if r.status == ReservationStatus.CONFIRMED
+        )
+
+        item_counts: dict[int, int] = {}
+
+        for r in all_reservations:
+            item_counts[r.item_id] = item_counts.get(r.item_id, 0) + 1
+
+        most_reserved_item_id = max(
+            item_counts,
+            key=item_counts.get
+        )
+
+    else:
+        avg_duration = 0.0
+        revenue_confirmed = 0.0
+        most_reserved_item_id = None
+
+    return {
+        "total_reservations": total,
+        "by_status": by_status,
+        "average_duration_days": round(avg_duration, 2),
+        "revenue_confirmed": round(revenue_confirmed, 2),
+        "most_reserved_item_id": most_reserved_item_id,
+    }
 
 
 @router.get("/{reservation_id}", response_model=Reservation)
