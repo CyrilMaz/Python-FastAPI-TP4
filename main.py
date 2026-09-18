@@ -79,3 +79,7 @@ def create_user(user: User):
 
     users_db[user.id] = user
     return user
+
+@app.get("/users", response_model=list[UserPublic])
+def get_users():
+    return list(users_db.values())
