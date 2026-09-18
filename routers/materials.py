@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError
 
-from app.models import (
+from models import (
     MaterialCondition,
     MaterialCreate,
     MaterialInternal,
@@ -14,7 +14,7 @@ from app.models import (
     MaterialUpdate,
     SortOrder,
 )
-from app.store import categories, materials
+from store import categories, materials
 
 
 router = APIRouter(prefix="/materials", tags=["materials"])

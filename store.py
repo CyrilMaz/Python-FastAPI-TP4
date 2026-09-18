@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from app.models import CategoryInternal, MaterialInternal
+from models import CategoryInternal, MaterialInternal
 
 
 categories: dict[UUID, CategoryInternal] = {}

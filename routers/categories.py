@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError
 
-from app.models import CategoryCreate, CategoryInternal, CategoryPublic, CategoryUpdate
-from app.store import categories, materials
+from models import CategoryCreate, CategoryInternal, CategoryPublic, CategoryUpdate
+from store import categories, materials
 
 
 router = APIRouter(prefix="/categories", tags=["categories"])

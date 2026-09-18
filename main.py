@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from app.routers.categories import router as categories_router
-from app.routers.materials import router as materials_router
+from routers.categories import router as categories_router
+from routers.materials import router as materials_router
 
 
 app = FastAPI(
