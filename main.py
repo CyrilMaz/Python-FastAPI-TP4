@@ -170,6 +170,10 @@ reviews_db: dict[int, Review] = {}
 #          Routes API         #
 ###############################
 
+######################################
+#          Routes API - USER         #
+######################################
+
 @app.post("/users", response_model=UserPublic, status_code=201)
 def create_user(user: User):
     if user.id in users_db:
@@ -244,3 +248,78 @@ def delete_user(user_id: int):
     del users_db[user_id]
 
     return {"message": "Utilisateur supprimé"}
+
+########################################
+#          Routes API - REVIEW         #
+########################################
+
+
+@app.post("/reviews", response_model=Review, status_code=201)
+def create_review(review: Review):
+    if review.id in reviews_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Un avis avec cet id existe déjà"
+        )
+
+    if review.user_id not in users_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Utilisateur associé introuvable"
+        )
+
+    reviews_db[review.id] = review
+    return review
+
+@app.get("/reviews", response_model=list[Review])
+def get_reviews():
+    return list(reviews_db.values())
+
+@app.get("/reviews/{review_id}", response_model=Review)
+def get_review(review_id: int):
+    if review_id not in reviews_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Avis introuvable"
+        )
+
+    return reviews_db[review_id]
+
+@app.patch("/reviews/{review_id}", response_model=Review)
+def update_review(review_id: int, update: ReviewUpdate):
+    if review_id not in reviews_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Avis introuvable"
+        )
+
+    changes = update.model_dump(exclude_unset=True)
+
+    if "user_id" in changes:
+        if changes["user_id"] not in users_db:
+            raise HTTPException(
+                status_code=404,
+                detail="Utilisateur associé introuvable"
+            )
+
+    old_review = reviews_db[review_id]
+
+    new_data = old_review.model_dump()
+    new_data.update(changes)
+
+    updated_review = Review.model_validate(new_data)
+
+    reviews_db[review_id] = updated_review
+    return updated_review
+
+@app.delete("/reviews/{review_id}")
+def delete_review(review_id: int):
+    if review_id not in reviews_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Avis introuvable"
+        )
+
+    del reviews_db[review_id]
+
+    return {"message": "Avis supprimé"}
