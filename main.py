@@ -31,6 +31,12 @@ def root():
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
+
+#################################
+#          Classes USER         #
+#################################
+
+
 class AccountType(str, Enum):
     INDIVIDUAL = "individual"
     PROFESSIONAL = "professional"
@@ -87,6 +93,82 @@ class UserUpdate(BaseModel):
         return value
 
 users_db: dict[int, User] = {}
+
+###################################
+#          Classes Review         #
+###################################
+
+class ReviewStatus(str, Enum):
+    PUBLISHED = "published"
+    HIDDEN = "hidden"
+
+class ReviewPhoto(BaseModel):
+    url: str = Field(min_length=5, max_length=500)
+    caption: str | None = Field(default=None, max_length=120)
+
+class Review(BaseModel):
+    id: int = Field(gt=0)
+    user_id: int = Field(gt=0)
+    material_id: int = Field(gt=0)
+
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(min_length=3, max_length=500)
+
+    status: ReviewStatus = ReviewStatus.PUBLISHED
+
+    photos: list[ReviewPhoto] = Field(default_factory=list)
+
+    @field_validator("comment")
+    @classmethod
+    def check_comment(cls, value):
+        if not value.strip():
+            raise ValueError(
+                "Le commentaire ne peut pas contenir uniquement des espaces"
+            )
+
+        return value
+
+    @model_validator(mode="after")
+    def check_low_rating_comment(self):
+        if self.rating <= 2 and len(self.comment.strip()) < 10:
+            raise ValueError(
+                "Une note de 1 ou 2 doit être accompagnée "
+                "d'un commentaire d'au moins 10 caractères"
+            )
+
+        return self
+
+class ReviewUpdate(BaseModel):
+    user_id: int | None = Field(default=None, gt=0)
+    material_id: int | None = Field(default=None, gt=0)
+
+    rating: int | None = Field(default=None, ge=1, le=5)
+
+    comment: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=500
+    )
+
+    status: ReviewStatus | None = None
+
+    photos: list[ReviewPhoto] | None = None
+
+    @field_validator("comment")
+    @classmethod
+    def check_comment(cls, value):
+        if value is not None and not value.strip():
+            raise ValueError(
+                "Le commentaire ne peut pas contenir uniquement des espaces"
+            )
+
+        return value
+
+reviews_db: dict[int, Review] = {}
+
+###############################
+#          Routes API         #
+###############################
 
 @app.post("/users", response_model=UserPublic, status_code=201)
 def create_user(user: User):
@@ -150,3 +232,15 @@ def update_user(user_id: int, update: UserUpdate):
 
     users_db[user_id] = updated_user
     return updated_user
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int):
+    if user_id not in users_db:
+        raise HTTPException(
+            status_code=404,
+            detail="Utilisateur introuvable"
+        )
+
+    del users_db[user_id]
+
+    return {"message": "Utilisateur supprimé"}
