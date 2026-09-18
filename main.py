@@ -74,6 +74,10 @@ class ReviewStatus(str, Enum):
     PUBLISHED = "published"
     HIDDEN = "hidden"
 
+class ReviewPhoto(BaseModel):
+    url: str = Field(min_length=5, max_length=500)
+    caption: str | None = Field(default=None, max_length=120)
+
 ###############################
 #          Routes API         #
 ###############################
