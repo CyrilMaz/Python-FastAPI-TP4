@@ -1,12 +1,14 @@
 from enum import Enum
+from uuid import UUID
 
 from fastapi import FastAPI
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from reservation import router as reservation_router
+from reservation import router as reservation_router, wire_dependencies
 from routers.categories import router as categories_router
 from routers.materials import router as materials_router
+from store import materials
 
 
 app = FastAPI(
@@ -109,7 +111,7 @@ class ReviewPhoto(BaseModel):
 class Review(BaseModel):
     id: int = Field(gt=0)
     user_id: int = Field(gt=0)
-    material_id: int = Field(gt=0)
+    material_id: UUID
 
     rating: int = Field(ge=1, le=5)
     comment: str = Field(min_length=3, max_length=500)
@@ -140,7 +142,7 @@ class Review(BaseModel):
 
 class ReviewUpdate(BaseModel):
     user_id: int | None = Field(default=None, gt=0)
-    material_id: int | None = Field(default=None, gt=0)
+    material_id: UUID | None = None
 
     rating: int | None = Field(default=None, ge=1, le=5)
 
@@ -165,6 +167,13 @@ class ReviewUpdate(BaseModel):
         return value
 
 reviews_db: dict[int, Review] = {}
+
+# Relie le module Reservation aux vraies données du projet.
+wire_dependencies(
+    user_exists_fn=lambda user_id: user_id in users_db,
+    item_exists_fn=lambda material_id: material_id in materials,
+    item_price_fn=lambda material_id: float(materials[material_id].daily_rate),
+)
 
 ###############################
 #          Routes API         #
@@ -268,6 +277,12 @@ def create_review(review: Review):
             detail="Utilisateur associé introuvable"
         )
 
+    if review.material_id not in materials:
+        raise HTTPException(
+            status_code=404,
+            detail="Matériel associé introuvable"
+        )
+
     reviews_db[review.id] = review
     return review
 
@@ -300,6 +315,13 @@ def update_review(review_id: int, update: ReviewUpdate):
             raise HTTPException(
                 status_code=404,
                 detail="Utilisateur associé introuvable"
+            )
+
+    if "material_id" in changes:
+        if changes["material_id"] not in materials:
+            raise HTTPException(
+                status_code=404,
+                detail="Matériel associé introuvable"
             )
 
     old_review = reviews_db[review_id]
