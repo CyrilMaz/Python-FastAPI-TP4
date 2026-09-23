@@ -3,33 +3,26 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import Enum
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
 
 router = APIRouter(prefix="/reservations", tags=["Reservations"])
 
-FAKE_USERS_DB: dict[int, dict] = {
-    1: {"id": 1, "name": "Alice"},
-    2: {"id": 2, "name": "Bilal"},
-}
-
-FAKE_ITEMS_DB: dict[int, dict] = {
-    1: {"id": 1, "name": "Perceuse", "price_per_day": 5.0},
-    2: {"id": 2, "name": "Tondeuse", "price_per_day": 8.0},
-}
-
-
 def user_exists(user_id: int) -> bool:
-    return user_id in FAKE_USERS_DB
+    """Dépendance injectée depuis main.py."""
+    return False
 
 
-def item_exists(item_id: int) -> bool:
-    return item_id in FAKE_ITEMS_DB
+def item_exists(item_id: UUID) -> bool:
+    """Dépendance injectée depuis main.py."""
+    return False
 
 
-def get_item_price(item_id: int) -> float:
-    return FAKE_ITEMS_DB[item_id]["price_per_day"]
+def get_item_price(item_id: UUID) -> float:
+    """Dépendance injectée depuis main.py."""
+    raise KeyError(item_id)
 
 
 def wire_dependencies(
@@ -58,7 +51,7 @@ class ReservationStatus(str, Enum):
 
 class ReservationBase(BaseModel):
     user_id: int = Field(..., description="Identifiant de l'utilisateur qui réserve")
-    item_id: int = Field(..., description="Identifiant de l'objet réservé")
+    item_id: UUID = Field(..., description="Identifiant du matériel réservé")
     start_date: date
     end_date: date
     notes: Optional[str] = Field(default=None, max_length=280)
@@ -120,7 +113,7 @@ def _overlaps(
 
 
 def _find_conflicting_reservation(
-    item_id: int,
+    item_id: UUID,
     start_date: date,
     end_date: date,
     exclude_id: Optional[int] = None
@@ -187,7 +180,7 @@ def create_reservation(payload: ReservationCreate) -> Reservation:
 @router.get("", response_model=list[Reservation])
 def list_reservations(
     user_id: Optional[int] = None,
-    item_id: Optional[int] = None,
+    item_id: Optional[UUID] = None,
     status_filter: Optional[ReservationStatus] = Query(default=None, alias="status"),
 ) -> list[Reservation]:
     results = list(reservations_db.values())
@@ -229,7 +222,7 @@ def reservation_stats() -> dict:
             if r.status == ReservationStatus.CONFIRMED
         )
 
-        item_counts: dict[int, int] = {}
+        item_counts: dict[UUID, int] = {}
 
         for r in all_reservations:
             item_counts[r.item_id] = item_counts.get(r.item_id, 0) + 1
